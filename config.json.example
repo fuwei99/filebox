@@ -1,0 +1,23 @@
+{
+  "port": 7860,
+  "url": "http://localhost:7860",
+  "maxFileSize": 104857600,
+  "maxBatchSize": 10,
+  "defaultExpire": 24,
+  "storage": "memory",
+  "gitSync": {
+    "enabled": false,
+    "owner": "",
+    "repo": "",
+    "branch": "main",
+    "token": "",
+    "intervalMinutes": 10,
+    "snapshotFile": "snapshot.json"
+  },
+  "r2": {
+    "endpoint": "",
+    "accessKeyId": "",
+    "secretAccessKey": "",
+    "bucketName": "filebox"
+  }
+}
