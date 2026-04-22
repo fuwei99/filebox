@@ -33,7 +33,7 @@ COPY --from=builder /app/backend/package.json ./backend/
 COPY --from=builder /app/frontend/dist ./frontend/dist
 
 # 复制配置文件
-COPY config.json ./
+COPY config.json.example ./config.json
 
 ENV NODE_ENV=production
 ENV PORT=7860
