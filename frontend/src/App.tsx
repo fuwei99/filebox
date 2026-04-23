@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, Download, FileBox, Github } from 'lucide-react';
+import { Upload, Download, FileBox, Github, MessageSquare } from 'lucide-react';
 import { UploadZone, UploadOptions } from './components/UploadZone';
 import { DownloadForm } from './components/DownloadForm';
 import { ResultCard } from './components/ResultCard';
@@ -61,7 +61,7 @@ function App() {
     try {
       if (files.length === 1) {
         // 单文件上传
-        const result = await uploadFile(files[0], options);
+        const result = await uploadFile(files[0], options, setUploadProgress);
         setUploadProgress(100);
         setUploadResult({
           files: [{
@@ -85,7 +85,7 @@ function App() {
         saveHistory(newHistory);
       } else {
         // 批量上传
-        const result = await uploadBatch(files, options);
+        const result = await uploadBatch(files, options, setUploadProgress);
         setUploadProgress(100);
         setUploadResult({
           files: result.files,
@@ -131,6 +131,13 @@ function App() {
             <h1 className="text-3xl font-bold text-gray-900">FileBox</h1>
           </div>
           <p className="text-gray-600">简单快速的文件传递与图床服务</p>
+          <a
+            href="/chat"
+            className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-white/80 border border-primary-200 text-primary-700 hover:bg-white transition-colors"
+          >
+            <MessageSquare className="w-4 h-4" />
+            进入聊天室（新页面）
+          </a>
         </header>
 
         {/* Tab Navigation */}
@@ -216,3 +223,4 @@ function App() {
 }
 
 export default App;
+

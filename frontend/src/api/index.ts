@@ -47,9 +47,12 @@ export interface QRCodeResponse {
   qrcode: string;
 }
 
+type UploadProgressCallback = (progress: number) => void;
+
 export const uploadFile = async (
   file: File,
-  options?: { expireHours?: number; password?: string; maxDownloads?: number }
+  options?: { expireHours?: number; password?: string; maxDownloads?: number },
+  onProgress?: UploadProgressCallback
 ): Promise<UploadResponse> => {
   const formData = new FormData();
   formData.append('file', file);
@@ -63,7 +66,7 @@ export const uploadFile = async (
       const percentCompleted = progressEvent.total
         ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
         : 0;
-      return percentCompleted;
+      onProgress?.(percentCompleted);
     },
   });
   return response.data;
@@ -71,7 +74,8 @@ export const uploadFile = async (
 
 export const uploadBatch = async (
   files: File[],
-  options?: { expireHours?: number; password?: string; maxDownloads?: number }
+  options?: { expireHours?: number; password?: string; maxDownloads?: number },
+  onProgress?: UploadProgressCallback
 ): Promise<BatchUploadResponse> => {
   const formData = new FormData();
   files.forEach((file) => formData.append('files', file));
@@ -81,6 +85,12 @@ export const uploadBatch = async (
 
   const response = await api.post('/upload/batch', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (progressEvent) => {
+      const percentCompleted = progressEvent.total
+        ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        : 0;
+      onProgress?.(percentCompleted);
+    },
   });
   return response.data;
 };

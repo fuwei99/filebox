@@ -123,12 +123,14 @@ docker run -d -p 7860:7860 filebox
   "branch": "main",
   "token": "your_token",
   "intervalMinutes": 10,
-  "snapshotFile": "snapshot.json"
+  "snapshotFile": "snapshot.json",
+  "chunkSizeMB": 32
 }
 ```
 
 说明：
 - GitHub 单文件大小限制约为 100MB，建议留出余量。
+- 默认会把快照切分为多个分块文件（`chunkSizeMB`，默认 32MB）再同步，降低单文件触发 100MB 限制的风险。
 - 该模式用于“重启恢复/云端备份”，不建议高频大文件场景长期使用。
 
 预留了 Cloudflare R2 存储接口，购买 R2 服务后可实现持久化存储。切换方式：

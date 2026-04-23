@@ -8,6 +8,7 @@ export interface AppConfig {
   maxBatchSize: number;
   defaultExpire: number;
   storage: 'memory' | 'r2';
+  jwtSecret: string;
   gitSync: {
     enabled: boolean;
     owner: string;
@@ -17,6 +18,7 @@ export interface AppConfig {
     intervalMinutes: number;
     dir?: string;
     snapshotFile: string;
+    chunkSizeMB: number;
   };
   r2: {
     endpoint: string;
@@ -33,6 +35,7 @@ const defaultConfig: AppConfig = {
   maxBatchSize: 10,
   defaultExpire: 24,
   storage: 'memory',
+  jwtSecret: process.env.JWT_SECRET || 'filebox-default-secret-change-in-production',
   gitSync: {
     enabled: false,
     owner: '',
@@ -41,6 +44,7 @@ const defaultConfig: AppConfig = {
     token: '',
     intervalMinutes: 10,
     snapshotFile: 'snapshot.json',
+    chunkSizeMB: 32,
   },
   r2: {
     endpoint: '',

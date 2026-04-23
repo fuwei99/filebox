@@ -2,16 +2,27 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createServer } from 'node:http';
+import { Server as SocketIOServer } from 'socket.io';
 import uploadRoutes from './routes/upload.js';
 import downloadRoutes from './routes/download.js';
 import imageRoutes from './routes/image.js';
+import authRoutes from './routes/auth.js';
+import chatRoutes from './routes/chat.js';
 import { appConfig } from './config.js';
 import { storage } from './storage/memory.js';
+import { userStorage } from './storage/user.js';
+import { chatStorage } from './storage/chat.js';
 import { GitSyncService } from './services/gitSync.js';
+import { registerChatSocket } from './socket/chat.js';
 
 const app = express();
+const httpServer = createServer(app);
+const io = new SocketIOServer(httpServer, {
+  cors: { origin: '*' },
+});
 const PORT = Number(process.env.PORT ?? appConfig.port);
-const gitSync = GitSyncService.fromConfig(storage, appConfig);
+const gitSync = GitSyncService.fromConfig(storage, userStorage, chatStorage, appConfig);
 
 const resolveFrontendDist = (): string | null => {
   const candidates = [
@@ -37,6 +48,8 @@ app.use((req, res, next) => {
 // 路由
 app.use('/api/upload', uploadRoutes);
 app.use('/api/download', downloadRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/i', imageRoutes);
 
 const frontendDist = resolveFrontendDist();
@@ -58,6 +71,9 @@ app.get('/api/health', (req, res) => {
 });
 
 const start = async () => {
+  // Register Socket.io handlers
+  registerChatSocket(io, chatStorage, userStorage);
+
   if (gitSync) {
     await gitSync.restoreFromRemote();
     setInterval(() => {
@@ -68,9 +84,10 @@ const start = async () => {
   // 定期清理过期文件（每30分钟）
   setInterval(async () => {
     await storage.cleanupExpired();
+    await chatStorage.cleanupExpired();
   }, 30 * 60 * 1000);
 
-  app.listen(PORT, () => {
+  httpServer.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
   });
 };
