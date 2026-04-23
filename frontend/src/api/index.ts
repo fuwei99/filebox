@@ -78,22 +78,37 @@ export const uploadFile = async (
   options?: { expireHours?: number; password?: string; maxDownloads?: number },
   onProgress?: UploadProgressCallback
 ): Promise<UploadResponse> => {
+  console.log(
+    `[upload-client] single start name="${file.name}" size=${file.size} type=${file.type || 'unknown'} endpoint=/api/upload`
+  );
+
   const formData = new FormData();
   formData.append('file', file);
   if (options?.expireHours) formData.append('expireHours', String(options.expireHours));
   if (options?.password) formData.append('password', options.password);
   if (options?.maxDownloads) formData.append('maxDownloads', String(options.maxDownloads));
 
-  const response = await api.post('/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: (progressEvent) => {
-      const percentCompleted = progressEvent.total
-        ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
-        : 0;
-      onProgress?.(percentCompleted);
-    },
-  });
-  return response.data;
+  try {
+    const response = await api.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = progressEvent.total
+          ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          : 0;
+        onProgress?.(percentCompleted);
+      },
+    });
+    console.log(
+      `[upload-client] single success status=${response.status} name="${file.name}" size=${file.size}`
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error(
+      `[upload-client] single failed name="${file.name}" size=${file.size} status=${error?.response?.status || 'unknown'} contentType=${error?.response?.headers?.['content-type'] || 'unknown'}`,
+      error?.response?.data
+    );
+    throw error;
+  }
 };
 
 export const uploadBatch = async (
@@ -101,22 +116,38 @@ export const uploadBatch = async (
   options?: { expireHours?: number; password?: string; maxDownloads?: number },
   onProgress?: UploadProgressCallback
 ): Promise<BatchUploadResponse> => {
+  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+  console.log(
+    `[upload-client] batch start count=${files.length} totalBytes=${totalBytes} endpoint=/api/upload/batch`
+  );
+
   const formData = new FormData();
   files.forEach((file) => formData.append('files', file));
   if (options?.expireHours) formData.append('expireHours', String(options.expireHours));
   if (options?.password) formData.append('password', options.password);
   if (options?.maxDownloads) formData.append('maxDownloads', String(options.maxDownloads));
 
-  const response = await api.post('/upload/batch', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: (progressEvent) => {
-      const percentCompleted = progressEvent.total
-        ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
-        : 0;
-      onProgress?.(percentCompleted);
-    },
-  });
-  return response.data;
+  try {
+    const response = await api.post('/upload/batch', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = progressEvent.total
+          ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          : 0;
+        onProgress?.(percentCompleted);
+      },
+    });
+    console.log(
+      `[upload-client] batch success status=${response.status} count=${files.length} totalBytes=${totalBytes}`
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error(
+      `[upload-client] batch failed count=${files.length} totalBytes=${totalBytes} status=${error?.response?.status || 'unknown'} contentType=${error?.response?.headers?.['content-type'] || 'unknown'}`,
+      error?.response?.data
+    );
+    throw error;
+  }
 };
 
 export const getFileInfo = async (code: string): Promise<FileInfo> => {

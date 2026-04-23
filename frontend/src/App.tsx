@@ -232,6 +232,15 @@ function App() {
         requestLogin();
       } else if (error.response?.status === 413) {
         const serverMaxFileSize = error.response?.data?.maxFileSize;
+        const responseContentType = error.response?.headers?.['content-type'];
+        const isHtml413 = typeof responseContentType === 'string' && responseContentType.includes('text/html');
+
+        if (isHtml413) {
+          console.error('[upload-client] 413 returned as HTML, likely blocked by upstream proxy before backend route');
+          addToast('上传被网关/代理拦截（413），请求可能未到后端。请检查部署平台上传大小限制。', 'error');
+          return;
+        }
+
         if (typeof serverMaxFileSize === 'number' && serverMaxFileSize > 0) {
           addToast(`文件过大，最大允许 ${formatFileSize(serverMaxFileSize)}`, 'error');
         } else {

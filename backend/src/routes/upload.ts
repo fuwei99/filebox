@@ -10,6 +10,15 @@ const normalizeFilename = (filename: string): string => {
   return Buffer.from(filename, 'latin1').toString('utf8');
 };
 
+router.use((req, _res, next) => {
+  const contentLength = req.headers['content-length'] || 'unknown';
+  const contentType = req.headers['content-type'] || 'unknown';
+  console.log(
+    `[upload-debug] incoming ${req.method} ${req.originalUrl} content-length=${contentLength} content-type=${contentType} maxFileSize=${appConfig.maxFileSize}`
+  );
+  next();
+});
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -23,6 +32,10 @@ router.post('/', requireServerAuth, upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
+
+    console.log(
+      `[upload-debug] single file parsed name="${req.file.originalname}" size=${req.file.size} mimetype=${req.file.mimetype}`
+    );
 
     const { expireHours, password, maxDownloads } = req.body;
     const code = generateCode();
@@ -76,6 +89,11 @@ router.post('/batch', requireServerAuth, upload.array('files', appConfig.maxBatc
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    console.log(
+      `[upload-debug] batch parsed count=${files.length} totalBytes=${totalBytes} maxFileSize=${appConfig.maxFileSize} maxBatchSize=${appConfig.maxBatchSize}`
+    );
+
     const { expireHours, password, maxDownloads } = req.body;
     const expireAt = expireHours && expireHours !== '0'
       ? new Date(Date.now() + parseInt(expireHours) * 60 * 60 * 1000)
@@ -128,6 +146,10 @@ router.post('/batch', requireServerAuth, upload.array('files', appConfig.maxBatc
 
 router.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err instanceof multer.MulterError) {
+    console.error(
+      `[upload-debug] multer error method=${req.method} url=${req.originalUrl} code=${err.code} message=${err.message} content-length=${req.headers['content-length'] || 'unknown'} maxFileSize=${appConfig.maxFileSize}`
+    );
+
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({
         error: 'File too large',
