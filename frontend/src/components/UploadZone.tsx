@@ -15,10 +15,14 @@ interface UploadZoneProps {
 }
 
 export interface UploadOptions {
-  expireHours: number;
+  expireHours?: number;
+  expireValue?: number;
+  expireUnit?: 'hour' | 'day';
   password: string;
   maxDownloads: number | undefined;
 }
+
+type ExpirePreset = '1h' | '24h' | '7d' | '30d' | 'permanent' | 'custom';
 
 const getFileIcon = (file: File) => {
   if (file.type.startsWith('image/')) return <Image className="w-5 h-5 text-blue-500" />;
@@ -48,7 +52,36 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
     password: '',
     maxDownloads: undefined,
   });
+  const [expirePreset, setExpirePreset] = useState<ExpirePreset>('24h');
+  const [customExpireValue, setCustomExpireValue] = useState<number>(1);
+  const [customExpireUnit, setCustomExpireUnit] = useState<'hour' | 'day'>('hour');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const buildUploadOptions = (): UploadOptions => {
+    if (expirePreset === 'custom') {
+      const value = Number.isFinite(customExpireValue) && customExpireValue >= 0 ? customExpireValue : 0;
+      return {
+        expireValue: value,
+        expireUnit: customExpireUnit,
+        password: options.password,
+        maxDownloads: options.maxDownloads,
+      };
+    }
+
+    const presetHoursMap: Record<Exclude<ExpirePreset, 'custom'>, number> = {
+      '1h': 1,
+      '24h': 24,
+      '7d': 168,
+      '30d': 720,
+      permanent: 0,
+    };
+
+    return {
+      expireHours: presetHoursMap[expirePreset],
+      password: options.password,
+      maxDownloads: options.maxDownloads,
+    };
+  };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -103,10 +136,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       onValidationError?.(`文件超过大小限制（${formatFileSize(maxFileSize)}）：${oversizedFile.file.name}`);
       return;
     }
-    onUpload(
-      files.map((item) => item.file),
-      options
-    );
+    onUpload(files.map((item) => item.file), buildUploadOptions());
   };
 
   return (
@@ -172,18 +202,43 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
             <label className="text-sm font-medium">有效期</label>
             <select
               className="input-field ml-auto"
-              value={options.expireHours}
-              onChange={(e) =>
-                setOptions({ ...options, expireHours: parseInt(e.target.value) })
-              }
+              value={expirePreset}
+              onChange={(e) => setExpirePreset(e.target.value as ExpirePreset)}
               disabled={uploading}
             >
-              <option value={1}>1小时</option>
-              <option value={24}>24小时</option>
-              <option value={168}>7天</option>
-              <option value={0}>永久</option>
+              <option value="1h">1小时</option>
+              <option value="24h">24小时</option>
+              <option value="7d">7天</option>
+              <option value="30d">30天</option>
+              <option value="permanent">永久</option>
+              <option value="custom">自定义</option>
             </select>
           </div>
+
+          {expirePreset === 'custom' && (
+            <div className="flex items-center gap-3">
+              <Clock className="w-5 h-5 text-gray-400" />
+              <label className="text-sm font-medium">自定义时长</label>
+              <input
+                type="number"
+                className="input-field w-28 ml-auto"
+                value={customExpireValue}
+                min={0}
+                step={1}
+                onChange={(e) => setCustomExpireValue(Number(e.target.value || 0))}
+                disabled={uploading}
+              />
+              <select
+                className="input-field w-24"
+                value={customExpireUnit}
+                onChange={(e) => setCustomExpireUnit(e.target.value as 'hour' | 'day')}
+                disabled={uploading}
+              >
+                <option value="hour">小时</option>
+                <option value="day">天</option>
+              </select>
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <Lock className="w-5 h-5 text-gray-400" />

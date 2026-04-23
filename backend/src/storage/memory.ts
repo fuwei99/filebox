@@ -62,6 +62,25 @@ export class MemoryStorage implements StorageProvider {
     this.storage.set(this.normalizeCode(code), storedFile);
   }
 
+  async registerUploadedObject(
+    code: string,
+    _r2Key: string,
+    originalName: string,
+    metadata: Omit<FileMetadata, 'uploadTime' | 'downloadCount'>
+  ): Promise<void> {
+    const storedFile: StoredFile = {
+      buffer: Buffer.alloc(0),
+      metadata: {
+        ...metadata,
+        filename: metadata.filename,
+        originalName,
+        uploadTime: new Date(),
+        downloadCount: 0,
+      },
+    };
+    this.storage.set(this.normalizeCode(code), storedFile);
+  }
+
   async download(code: string): Promise<{ buffer: Buffer; metadata: FileMetadata } | null> {
     const normalizedCode = this.normalizeCode(code);
     const file = this.storage.get(normalizedCode);

@@ -4,6 +4,7 @@ import { ArrowLeft, Send, Paperclip, File, Users, Settings, Copy, Archive, Trash
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
 import * as chatApi from '../../api/chat';
+import { uploadFile } from '../../api';
 import type { Room, Message, RoomDetail } from '../../api/chat';
 
 interface ChatRoomProps {
@@ -181,26 +182,19 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ room, onBack, socketRef, onR
   const uploadAndSendFile = async (file: File) => {
     if (!socketRef.current || roomStatus !== 'active') return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+      const data = await uploadFile(file, {
+        scope: 'chat',
       });
-      const data = await response.json();
 
-      if (data.success) {
-        const isImage = file.type.startsWith('image/');
-        socketRef.current.emit('send-message', {
-          roomCode: room.code,
-          type: isImage ? 'image' : 'file',
-          content: data.code,
-          fileName: file.name,
-          fileSize: file.size,
-        });
-      }
+      const isImage = file.type.startsWith('image/');
+      socketRef.current.emit('send-message', {
+        roomCode: room.code,
+        type: isImage ? 'image' : 'file',
+        content: data.code,
+        fileName: file.name,
+        fileSize: file.size,
+      });
     } catch (error) {
       console.error('Failed to upload file:', error);
     }

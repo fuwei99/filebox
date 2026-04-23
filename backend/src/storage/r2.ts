@@ -54,6 +54,25 @@ export class R2Storage implements StorageProvider {
     return `${prefix}/${this.normalizeCode(code)}`;
   }
 
+  private setStoredMeta(
+    normalizedCode: string,
+    r2Key: string,
+    originalName: string,
+    metadata: Omit<FileMetadata, 'uploadTime' | 'downloadCount'>
+  ): void {
+    const stored: StoredFileMeta = {
+      r2Key,
+      metadata: {
+        ...metadata,
+        filename: metadata.filename,
+        originalName,
+        uploadTime: new Date(),
+        downloadCount: 0,
+      },
+    };
+    this.storage.set(normalizedCode, stored);
+  }
+
   async upload(
     code: string,
     buffer: Buffer,
@@ -73,17 +92,17 @@ export class R2Storage implements StorageProvider {
       })
     );
 
-    const stored: StoredFileMeta = {
-      r2Key,
-      metadata: {
-        ...metadata,
-        filename: metadata.filename,
-        originalName,
-        uploadTime: new Date(),
-        downloadCount: 0,
-      },
-    };
-    this.storage.set(normalizedCode, stored);
+    this.setStoredMeta(normalizedCode, r2Key, originalName, metadata);
+  }
+
+  async registerUploadedObject(
+    code: string,
+    r2Key: string,
+    originalName: string,
+    metadata: Omit<FileMetadata, 'uploadTime' | 'downloadCount'>
+  ): Promise<void> {
+    const normalizedCode = this.normalizeCode(code);
+    this.setStoredMeta(normalizedCode, r2Key, originalName, metadata);
   }
 
   async download(code: string): Promise<{ buffer: Buffer; metadata: FileMetadata } | null> {

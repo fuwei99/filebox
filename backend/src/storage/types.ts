@@ -24,6 +24,12 @@ export interface StorageProvider {
     filename: string,
     metadata: Omit<FileMetadata, 'uploadTime' | 'downloadCount'>
   ): Promise<void>;
+  registerUploadedObject(
+    code: string,
+    r2Key: string,
+    originalName: string,
+    metadata: Omit<FileMetadata, 'uploadTime' | 'downloadCount'>
+  ): Promise<void>;
   download(code: string): Promise<{ buffer: Buffer; metadata: FileMetadata } | null>;
   delete(code: string): Promise<void>;
   getInfo(code: string): Promise<FileMetadata | null>;

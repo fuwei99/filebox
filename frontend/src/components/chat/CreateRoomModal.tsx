@@ -8,16 +8,38 @@ interface CreateRoomModalProps {
   onCreated: (room: Room) => void;
 }
 
+type RoomExpirePreset = '1h' | '24h' | '7d' | '30d' | 'permanent' | 'custom';
+
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ onClose, onCreated }) => {
   const [formData, setFormData] = useState({
     name: '',
     maxMembers: 50,
     password: '',
     hasPassword: false,
-    expireHours: 24,
   });
+  const [expirePreset, setExpirePreset] = useState<RoomExpirePreset>('24h');
+  const [customExpireValue, setCustomExpireValue] = useState<number>(1);
+  const [customExpireUnit, setCustomExpireUnit] = useState<'hour' | 'day'>('hour');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const buildExpireHours = (): number | null => {
+    if (expirePreset === 'custom') {
+      const value = Number.isFinite(customExpireValue) && customExpireValue >= 0 ? customExpireValue : 0;
+      if (value === 0) return null;
+      return customExpireUnit === 'day' ? value * 24 : value;
+    }
+
+    const presetHoursMap: Record<Exclude<RoomExpirePreset, 'custom'>, number | null> = {
+      '1h': 1,
+      '24h': 24,
+      '7d': 168,
+      '30d': 720,
+      permanent: null,
+    };
+
+    return presetHoursMap[expirePreset];
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +51,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ onClose, onCre
         name: formData.name,
         maxMembers: formData.maxMembers,
         password: formData.hasPassword ? formData.password : undefined,
-        expireHours: formData.expireHours === 0 ? null : formData.expireHours,
+        expireHours: buildExpireHours(),
       });
 
       if (response.success) {
@@ -98,15 +120,38 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ onClose, onCre
             </label>
             <select
               className="input-field w-full"
-              value={formData.expireHours}
-              onChange={(e) => setFormData({ ...formData, expireHours: parseInt(e.target.value) })}
+              value={expirePreset}
+              onChange={(e) => setExpirePreset(e.target.value as RoomExpirePreset)}
             >
-              <option value={1}>1小时</option>
-              <option value={24}>24小时</option>
-              <option value={168}>7天</option>
-              <option value={0}>永久</option>
+              <option value="1h">1小时</option>
+              <option value="24h">24小时</option>
+              <option value="7d">7天</option>
+              <option value="30d">30天</option>
+              <option value="permanent">永久</option>
+              <option value="custom">自定义</option>
             </select>
           </div>
+
+          {expirePreset === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                className="input-field flex-1"
+                value={customExpireValue}
+                min={0}
+                step={1}
+                onChange={(e) => setCustomExpireValue(Number(e.target.value || 0))}
+              />
+              <select
+                className="input-field w-28"
+                value={customExpireUnit}
+                onChange={(e) => setCustomExpireUnit(e.target.value as 'hour' | 'day')}
+              >
+                <option value="hour">小时</option>
+                <option value="day">天</option>
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
