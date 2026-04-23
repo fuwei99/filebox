@@ -8,7 +8,7 @@
 - **图床功能** - 图片支持外链访问 `/i/:code`
 - **批量上传** - 最多10个文件同时上传
 - **拖拽上传** - 支持拖拽文件到上传区域
-- **文件过期** - 1小时 / 24小时 / 7天 / 永久
+- **文件过期** - 1小时 / 24小时 / 7天 / 30天 / 永久 / 自定义小时或天数
 - **提取密码** - 可选密码保护敏感文件
 - **下载次数限制** - 限制文件被下载的次数
 - **二维码** - 自动生成二维码方便手机扫码
@@ -21,7 +21,7 @@
 
 - **后端**: Node.js + Express + TypeScript
 - **前端**: React + Tailwind CSS + TypeScript
-- **存储**: 内存存储（预留 Cloudflare R2 接口）
+- **存储**: 内存存储 / Cloudflare R2
 
 ## 快速开始
 
@@ -75,13 +75,20 @@ docker run -d -p 7860:7860 filebox
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | /api/upload | 上传单个文件 |
-| POST | /api/upload/batch | 批量上传（最多10个） |
+| POST | /api/upload/prepare | 申请单文件直传签名 |
+| POST | /api/upload/prepare-batch | 申请批量直传签名（最多10个） |
+| POST | /api/upload/complete | 确认单文件上传完成并写入元数据 |
+| POST | /api/upload/complete-batch | 确认批量上传完成并写入元数据 |
 | GET | /api/download/:code | 下载文件 |
 | GET | /api/download/preview/:code | 预览文件 |
 | GET | /api/download/info/:code | 获取文件信息 |
 | GET | /api/download/qrcode/:code | 获取二维码 |
 | GET | /i/:code | 图床外链（直接显示图片） |
+
+直传流程说明：
+1. 前端调用 `prepare/prepare-batch` 获取预签名 URL。
+2. 前端直接 `PUT` 文件到 R2。
+3. 前端调用 `complete/complete-batch`，后端校验并登记文件元数据。
 
 ## 配置
 
@@ -92,13 +99,44 @@ docker run -d -p 7860:7860 filebox
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
 | port | 7860 | 后端端口 |
+| storage | memory | 存储类型（`memory` 或 `r2`） |
 | maxFileSize | 104857600 | 单文件大小限制（100MB） |
 | maxBatchSize | 10 | 批量上传数量限制 |
 | defaultExpire | 24 | 默认过期时间（小时） |
 
+## R2 直传与 CORS（重要）
+
+如果使用浏览器直传 R2（`storage: "r2"`），必须在 R2 Bucket 设置 CORS，否则会被浏览器拦截（常见报错：`OPTIONS 403`、`No Access-Control-Allow-Origin`）。
+
+示例 CORS 配置：
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "http://localhost:7860",
+      "https://filebox.maltose99.xyz",
+      "https://file-box.replit.app"
+    ],
+    "AllowedMethods": ["GET", "HEAD", "PUT"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+说明：
+- `AllowedOrigins` 只填写你实际前端域名（可多项）。
+- `AllowedMethods` 必须包含 `PUT`（直传上传必需）。
+- 本地开发端口如果不是 `7860`，请同步修改。
+
 ## 存储说明
 
-当前使用内存存储，服务重启后数据将丢失。
+支持两种存储模式：
+
+- `memory`：数据在内存，服务重启后丢失。
+- `r2`：文件存储在 Cloudflare R2，后端保存元数据并支持直传。
 
 ### GitHub 同步备份模式（推荐 Replit）
 
@@ -133,9 +171,10 @@ docker run -d -p 7860:7860 filebox
 - 默认会把快照切分为多个分块文件（`chunkSizeMB`，默认 32MB）再同步，降低单文件触发 100MB 限制的风险。
 - 该模式用于“重启恢复/云端备份”，不建议高频大文件场景长期使用。
 
-预留了 Cloudflare R2 存储接口，购买 R2 服务后可实现持久化存储。切换方式：
-1. 在 `config.json` 的 `r2` 节点填写配置
-2. 修改 `backend/src/storage/` 中的存储适配器
+切换到 R2：
+1. 在 `config.json` 中设置 `storage: "r2"`。
+2. 在 `config.json` 的 `r2` 节点填写 `endpoint/accessKeyId/secretAccessKey/bucketName`。
+3. 按上文配置 Bucket CORS（浏览器直传必须）。
 
 ## 项目结构
 
@@ -147,7 +186,7 @@ filebox/
 │   │   ├── routes/          # API 路由
 │   │   ├── storage/         # 存储适配器
 │   │   │   ├── memory.ts    # 内存存储
-│   │   │   └── r2.ts        # R2 存储（预留）
+│   │   │   └── r2.ts        # R2 存储
 │   │   └── utils/
 │   └── package.json
 ├── frontend/

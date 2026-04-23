@@ -31,6 +31,9 @@ export interface StorageProvider {
     metadata: Omit<FileMetadata, 'uploadTime' | 'downloadCount'>
   ): Promise<void>;
   download(code: string): Promise<{ buffer: Buffer; metadata: FileMetadata } | null>;
+  streamDownload?(
+    code: string
+  ): Promise<{ stream: NodeJS.ReadableStream; metadata: FileMetadata; contentLength: number | null } | null>;
   delete(code: string): Promise<void>;
   getInfo(code: string): Promise<FileMetadata | null>;
   incrementDownload(code: string): Promise<void>;

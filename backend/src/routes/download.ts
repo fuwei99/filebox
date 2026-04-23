@@ -59,6 +59,41 @@ router.get('/:code', async (req, res) => {
     const { code } = req.params;
     const { password } = req.query;
 
+    const streamData = storage.streamDownload ? await storage.streamDownload(code) : null;
+
+    if (!streamData && !storage.download) {
+      return res.status(404).json({ error: 'File not found or expired' });
+    }
+
+    if (streamData) {
+      const { stream, metadata, contentLength } = streamData;
+
+      if (metadata.password && metadata.password !== password) {
+        if ('destroy' in stream && typeof stream.destroy === 'function') {
+          stream.destroy();
+        }
+        return res.status(403).json({ error: 'Password required or incorrect' });
+      }
+
+      await storage.incrementDownload(code);
+
+      res.setHeader('Content-Type', metadata.mimeType);
+      res.setHeader('Content-Length', contentLength ?? metadata.size);
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(metadata.originalName)}"`);
+
+      stream.on('error', (error) => {
+        console.error('Download stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Download failed' });
+        } else {
+          res.end();
+        }
+      });
+
+      stream.pipe(res);
+      return;
+    }
+
     const fileData = await storage.download(code);
 
     if (!fileData) {
@@ -92,6 +127,35 @@ router.get('/preview/:code', async (req, res) => {
   try {
     const { code } = req.params;
     const { password } = req.query;
+
+    const streamData = storage.streamDownload ? await storage.streamDownload(code) : null;
+
+    if (streamData) {
+      const { stream, metadata, contentLength } = streamData;
+
+      if (metadata.password && metadata.password !== password) {
+        if ('destroy' in stream && typeof stream.destroy === 'function') {
+          stream.destroy();
+        }
+        return res.status(403).json({ error: 'Password required or incorrect' });
+      }
+
+      res.setHeader('Content-Type', metadata.mimeType);
+      res.setHeader('Content-Length', contentLength ?? metadata.size);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+
+      stream.on('error', (error) => {
+        console.error('Preview stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Preview failed' });
+        } else {
+          res.end();
+        }
+      });
+
+      stream.pipe(res);
+      return;
+    }
 
     const fileData = await storage.download(code);
 

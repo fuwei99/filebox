@@ -141,6 +141,41 @@ export class R2Storage implements StorageProvider {
     return { buffer, metadata: file.metadata };
   }
 
+  async streamDownload(
+    code: string
+  ): Promise<{ stream: NodeJS.ReadableStream; metadata: FileMetadata; contentLength: number | null } | null> {
+    const normalizedCode = this.normalizeCode(code);
+    const file = this.storage.get(normalizedCode);
+    if (!file) return null;
+
+    if (file.metadata.expireAt && new Date() > file.metadata.expireAt) {
+      await this.deleteFromR2(file.r2Key);
+      this.storage.delete(normalizedCode);
+      return null;
+    }
+
+    if (file.metadata.maxDownloads && file.metadata.downloadCount >= file.metadata.maxDownloads) {
+      return null;
+    }
+
+    const response = await this.client.send(
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: file.r2Key,
+      })
+    );
+
+    if (!response.Body) {
+      throw new Error(`[R2Storage] Empty body for key ${file.r2Key}`);
+    }
+
+    return {
+      stream: response.Body as NodeJS.ReadableStream,
+      metadata: file.metadata,
+      contentLength: typeof response.ContentLength === 'number' ? response.ContentLength : null,
+    };
+  }
+
   async delete(code: string): Promise<void> {
     const normalizedCode = this.normalizeCode(code);
     const file = this.storage.get(normalizedCode);

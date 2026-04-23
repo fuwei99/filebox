@@ -116,6 +116,7 @@ const getR2Client = (): S3Client => {
       accessKeyId: appConfig.r2.accessKeyId,
       secretAccessKey: appConfig.r2.secretAccessKey,
     },
+    requestChecksumCalculation: 'WHEN_REQUIRED',
   });
 };
 
@@ -204,7 +205,6 @@ const buildPrepareResponse = async (
     Bucket: intent.bucket,
     Key: intent.r2Key,
     ContentType: intent.mimeType,
-    ContentLength: intent.size,
   };
   const uploadUrl = await getSignedUrl(client, new PutObjectCommand(putInput), {
     expiresIn: 300,

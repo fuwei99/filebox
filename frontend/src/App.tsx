@@ -375,7 +375,7 @@ function App() {
           <p className="flex items-center justify-center gap-2">
             <Github className="w-4 h-4" />
             <a
-              href="https://github.com"
+              href="https://github.com/fuwei99/filebox.git"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-primary-600"
