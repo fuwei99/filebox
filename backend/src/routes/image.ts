@@ -1,5 +1,5 @@
 import express from 'express';
-import { storage } from '../storage/memory.js';
+import { storage } from '../storage/index.js';
 
 const router = express.Router();
 

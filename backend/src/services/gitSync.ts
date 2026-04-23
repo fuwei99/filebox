@@ -3,7 +3,8 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { AppConfig } from '../config.js';
-import type { MemoryStorage, StorageSnapshotRecord } from '../storage/memory.js';
+import type { StorageSnapshotRecord } from '../storage/types.js';
+import type { StorageProvider } from '../storage/types.js';
 import type { UserStorage, UserSnapshotRecord } from '../storage/user.js';
 import type { ChatStorage, ChatSnapshot } from '../storage/chat.js';
 
@@ -64,13 +65,13 @@ interface GitSyncConfig {
 
 export class GitSyncService {
   private readonly config: GitSyncConfig;
-  private readonly memoryStorage: MemoryStorage;
+  private readonly memoryStorage: StorageProvider;
   private readonly userStorage: UserStorage;
   private readonly chatStorage: ChatStorage;
   private syncing = false;
 
   constructor(
-    memoryStorage: MemoryStorage,
+    memoryStorage: StorageProvider,
     userStorage: UserStorage,
     chatStorage: ChatStorage,
     config: GitSyncConfig
@@ -82,7 +83,7 @@ export class GitSyncService {
   }
 
   static fromConfig(
-    memoryStorage: MemoryStorage,
+    memoryStorage: StorageProvider,
     userStorage: UserStorage,
     chatStorage: ChatStorage,
     config: AppConfig
@@ -220,7 +221,7 @@ export class GitSyncService {
     const payloadRecords: SnapshotChunkedRecord[] = [];
 
     for (const record of records) {
-      const chunks = this.splitBufferToChunks(record.buffer, this.config.chunkSizeBytes);
+      const chunks = this.splitBufferToChunks(record.buffer ?? Buffer.alloc(0), this.config.chunkSizeBytes);
       const chunkRefs: SnapshotChunkRecord[] = [];
 
       for (let index = 0; index < chunks.length; index++) {
@@ -378,7 +379,29 @@ export class GitSyncService {
   private async writeFilesSnapshot(
     records: StorageSnapshotRecord[],
     snapshotDir: string
-  ): Promise<{ version: 2; chunkSizeBytes: number; chunkDir: string; records: any[] }> {
+  ): Promise<{ version: 2 | 3; chunkSizeBytes?: number; chunkDir?: string; records: any[] }> {
+    // Detect if any record has buffer (memory mode), otherwise use lightweight metadata-only format (R2 mode)
+    const hasBuffers = records.some((r) => r.buffer && r.buffer.length > 0);
+
+    if (!hasBuffers) {
+      // R2 mode: metadata-only snapshot, no chunks
+      const payloadRecords = records.map((record) => ({
+        code: record.code,
+        r2Key: record.r2Key,
+        metadata: {
+          ...record.metadata,
+          uploadTime: record.metadata.uploadTime.toISOString(),
+          expireAt: record.metadata.expireAt ? record.metadata.expireAt.toISOString() : null,
+        },
+      }));
+
+      return {
+        version: 3,
+        records: payloadRecords,
+      };
+    }
+
+    // Memory mode: chunked snapshot with buffers
     const chunkDirName = 'files-chunks';
     const chunkDirPath = path.join(snapshotDir, chunkDirName);
 
@@ -388,7 +411,7 @@ export class GitSyncService {
     const payloadRecords: any[] = [];
 
     for (const record of records) {
-      const chunks = this.splitBufferToChunks(record.buffer, this.config.chunkSizeBytes);
+      const chunks = this.splitBufferToChunks(record.buffer ?? Buffer.alloc(0), this.config.chunkSizeBytes);
       const chunkRefs: SnapshotChunkRecord[] = [];
 
       for (let index = 0; index < chunks.length; index++) {
@@ -446,11 +469,24 @@ export class GitSyncService {
 
     if (masterManifest.version === 3) {
       const snapshotDir = path.join(this.config.repoDir, 'snapshot-v3');
-      
+
       // Read files
       let files: StorageSnapshotRecord[] = [];
       if (masterManifest.files) {
-        files = await this.parseChunkedSnapshot(masterManifest.files, snapshotDir);
+        if (masterManifest.files.version === 3) {
+          // R2 mode: metadata-only, no chunks
+          files = masterManifest.files.records.map((record: any) => ({
+            code: record.code,
+            r2Key: record.r2Key,
+            metadata: {
+              ...record.metadata,
+              uploadTime: new Date(record.metadata.uploadTime),
+              expireAt: record.metadata.expireAt ? new Date(record.metadata.expireAt) : null,
+            },
+          }));
+        } else {
+          files = await this.parseChunkedSnapshot(masterManifest.files, snapshotDir);
+        }
       }
 
       // Read users

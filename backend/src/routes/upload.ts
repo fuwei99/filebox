@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { appConfig } from '../config.js';
-import { storage } from '../storage/memory.js';
+import { storage } from '../storage/index.js';
 import { generateCode } from '../utils/code.js';
 
 const router = express.Router();

@@ -10,7 +10,7 @@ import imageRoutes from './routes/image.js';
 import authRoutes from './routes/auth.js';
 import chatRoutes from './routes/chat.js';
 import { appConfig } from './config.js';
-import { storage } from './storage/memory.js';
+import { storage } from './storage/index.js';
 import { userStorage } from './storage/user.js';
 import { chatStorage } from './storage/chat.js';
 import { GitSyncService } from './services/gitSync.js';

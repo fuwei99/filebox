@@ -1,38 +1,8 @@
-export interface FileMetadata {
-  filename: string;
-  originalName: string;
-  mimeType: string;
-  size: number;
-  uploadTime: Date;
-  expireAt: Date | null;
-  password: string | null;
-  maxDownloads: number | null;
-  downloadCount: number;
-}
+import type { FileMetadata, StorageProvider, StorageSnapshotRecord } from './types.js';
 
 interface StoredFile {
   buffer: Buffer;
   metadata: FileMetadata;
-}
-
-export interface StorageSnapshotRecord {
-  code: string;
-  buffer: Buffer;
-  metadata: FileMetadata;
-}
-
-export interface StorageProvider {
-  upload(
-    code: string,
-    buffer: Buffer,
-    filename: string,
-    metadata: Omit<FileMetadata, 'uploadTime' | 'downloadCount'>
-  ): Promise<void>;
-  download(code: string): Promise<{ buffer: Buffer; metadata: FileMetadata } | null>;
-  delete(code: string): Promise<void>;
-  getInfo(code: string): Promise<FileMetadata | null>;
-  incrementDownload(code: string): Promise<void>;
-  cleanupExpired(): Promise<void>;
 }
 
 export class MemoryStorage implements StorageProvider {
@@ -57,6 +27,10 @@ export class MemoryStorage implements StorageProvider {
     this.storage.clear();
     for (const record of records) {
       const code = this.normalizeCode(record.code);
+      if (!record.buffer) {
+        console.warn(`[memory-storage] Skipping record ${code}: no buffer in snapshot`);
+        continue;
+      }
       this.storage.set(code, {
         buffer: Buffer.from(record.buffer),
         metadata: {

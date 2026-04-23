@@ -2,7 +2,7 @@ import express from 'express';
 import { chatStorage } from '../storage/chat.js';
 import { userStorage } from '../storage/user.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
-import { storage } from '../storage/memory.js';
+import { storage } from '../storage/index.js';
 
 const router = express.Router();
 
@@ -315,6 +315,11 @@ router.post('/rooms/:code/end', async (req: AuthRequest, res) => {
     }
 
     await chatStorage.endRoom(room.id, userId, archive);
+
+    // 非归档（删除）时清理 R2 聊天附件
+    if (!archive && storage.deleteByPrefix) {
+      await storage.deleteByPrefix(`chat/${room.id}/`);
+    }
 
     res.json({
       success: true,
