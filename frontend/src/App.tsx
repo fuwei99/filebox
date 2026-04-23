@@ -34,6 +34,14 @@ interface Toast {
   type: 'error' | 'success' | 'info';
 }
 
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: string) => void }) {
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 space-y-2 w-full max-w-sm px-4">
@@ -223,7 +231,12 @@ function App() {
         addToast('请先登录服务器', 'error');
         requestLogin();
       } else if (error.response?.status === 413) {
-        addToast('文件过大，请缩小后重试', 'error');
+        const serverMaxFileSize = error.response?.data?.maxFileSize;
+        if (typeof serverMaxFileSize === 'number' && serverMaxFileSize > 0) {
+          addToast(`文件过大，最大允许 ${formatFileSize(serverMaxFileSize)}`, 'error');
+        } else {
+          addToast(`文件过大，最大允许 ${formatFileSize(maxFileSize)}`, 'error');
+        }
       } else if (error.response?.data?.error) {
         addToast(error.response.data.error, 'error');
       } else {
@@ -334,6 +347,7 @@ function App() {
                 uploading={uploading}
                 progress={uploadProgress}
                 maxFileSize={maxFileSize}
+                onValidationError={(message) => addToast(message, 'error')}
               />
             )
           ) : (

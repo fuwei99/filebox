@@ -126,4 +126,23 @@ router.post('/batch', requireServerAuth, upload.array('files', appConfig.maxBatc
   }
 });
 
+router.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        error: 'File too large',
+        maxFileSize: appConfig.maxFileSize,
+      });
+    }
+
+    return res.status(400).json({
+      error: err.message,
+      code: err.code,
+      maxFileSize: appConfig.maxFileSize,
+    });
+  }
+
+  next(err);
+});
+
 export default router;

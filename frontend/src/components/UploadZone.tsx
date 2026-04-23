@@ -11,6 +11,7 @@ interface UploadZoneProps {
   uploading: boolean;
   progress: number;
   maxFileSize?: number;
+  onValidationError?: (message: string) => void;
 }
 
 export interface UploadOptions {
@@ -33,7 +34,13 @@ const formatFileSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-export const UploadZone: React.FC<UploadZoneProps> = ({ onUpload, uploading, progress, maxFileSize = 100 * 1024 * 1024 }) => {
+export const UploadZone: React.FC<UploadZoneProps> = ({
+  onUpload,
+  uploading,
+  progress,
+  maxFileSize = 100 * 1024 * 1024,
+  onValidationError,
+}) => {
   const [dragActive, setDragActive] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [options, setOptions] = useState<UploadOptions>({
@@ -56,7 +63,17 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onUpload, uploading, pro
   const addFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
     const fileArray = Array.from(newFiles);
-    const newItems = fileArray.map((file) => ({
+    const oversizedFiles = fileArray.filter((file) => file.size > maxFileSize);
+
+    if (oversizedFiles.length > 0) {
+      const names = oversizedFiles.map((file) => file.name).join('、');
+      onValidationError?.(`文件超过大小限制（${formatFileSize(maxFileSize)}）：${names}`);
+    }
+
+    const validFiles = fileArray.filter((file) => file.size <= maxFileSize);
+    if (validFiles.length === 0) return;
+
+    const newItems = validFiles.map((file) => ({
       file,
       id: Math.random().toString(36).substring(7),
     }));
@@ -81,6 +98,11 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onUpload, uploading, pro
 
   const handleUpload = () => {
     if (files.length === 0) return;
+    const oversizedFile = files.find((item) => item.file.size > maxFileSize);
+    if (oversizedFile) {
+      onValidationError?.(`文件超过大小限制（${formatFileSize(maxFileSize)}）：${oversizedFile.file.name}`);
+      return;
+    }
     onUpload(
       files.map((item) => item.file),
       options
