@@ -70,6 +70,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// 公开配置
+app.get('/api/config', (req, res) => {
+  res.json({
+    maxFileSize: appConfig.maxFileSize,
+    maxBatchSize: appConfig.maxBatchSize,
+  });
+});
+
 const start = async () => {
   // Register Socket.io handlers
   registerChatSocket(io, chatStorage, userStorage);

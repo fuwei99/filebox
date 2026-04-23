@@ -26,6 +26,10 @@ export interface AppConfig {
     secretAccessKey: string;
     bucketName: string;
   };
+  serverAuth: {
+    enabled: boolean;
+    password: string;
+  };
 }
 
 const defaultConfig: AppConfig = {
@@ -51,6 +55,10 @@ const defaultConfig: AppConfig = {
     accessKeyId: '',
     secretAccessKey: '',
     bucketName: '',
+  },
+  serverAuth: {
+    enabled: false,
+    password: '',
   },
 };
 
@@ -91,6 +99,10 @@ const mergeConfig = (rawConfig: Partial<AppConfig>): AppConfig => {
     r2: {
       ...defaultConfig.r2,
       ...(rawConfig.r2 ?? {}),
+    },
+    serverAuth: {
+      ...defaultConfig.serverAuth,
+      ...(rawConfig.serverAuth ?? {}),
     },
   };
 };

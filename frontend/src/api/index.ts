@@ -4,6 +4,25 @@ const api = axios.create({
   baseURL: '/api',
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('filebox_server_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('filebox_server_token');
+      window.dispatchEvent(new CustomEvent('server-auth-expired'));
+    }
+    return Promise.reject(error);
+  }
+);
+
 export interface UploadResponse {
   success: boolean;
   code: string;
@@ -45,6 +64,11 @@ export interface FileInfo {
 export interface QRCodeResponse {
   success: boolean;
   qrcode: string;
+}
+
+export interface ConfigResponse {
+  maxFileSize: number;
+  maxBatchSize: number;
 }
 
 type UploadProgressCallback = (progress: number) => void;
@@ -106,5 +130,10 @@ export const downloadFile = (code: string, password?: string): string => {
 
 export const getQRCode = async (code: string): Promise<QRCodeResponse> => {
   const response = await api.get(`/download/qrcode/${code}`);
+  return response.data;
+};
+
+export const getConfig = async (): Promise<ConfigResponse> => {
+  const response = await api.get('/config');
   return response.data;
 };

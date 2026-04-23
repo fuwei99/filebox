@@ -4,7 +4,7 @@ import { appConfig } from '../config.js';
 import { userStorage } from '../storage/user.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { generateCode } from '../utils/code.js';
-import { storage } from '../storage/memory.js';
+import { storage } from '../storage/index.js';
 
 const router = express.Router();
 
@@ -189,6 +189,32 @@ router.patch('/avatar', requireAuth, async (req: AuthRequest, res) => {
     console.error('Update avatar error:', error);
     res.status(500).json({ error: 'Failed to update avatar' });
   }
+});
+
+// Server auth status
+router.get('/server-status', (req, res) => {
+  res.json({ enabled: appConfig.serverAuth.enabled });
+});
+
+// Server login
+router.post('/server-login', (req, res) => {
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ error: 'Password is required' });
+  }
+
+  if (password !== appConfig.serverAuth.password) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+
+  const token = jwt.sign(
+    { type: 'server' },
+    appConfig.jwtSecret,
+    { expiresIn: '30d' }
+  );
+
+  res.json({ success: true, token });
 });
 
 export default router;

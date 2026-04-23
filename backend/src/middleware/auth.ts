@@ -43,3 +43,29 @@ export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction
   
   next();
 };
+
+export const requireServerAuth = (req: Request, res: Response, next: NextFunction): void => {
+  if (!appConfig.serverAuth.enabled) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Server authentication required' });
+    return;
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    const decoded = jwt.verify(token, appConfig.jwtSecret) as { type: string };
+    if (decoded.type !== 'server') {
+      res.status(401).json({ error: 'Invalid server token' });
+      return;
+    }
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+};

@@ -3,6 +3,7 @@ import multer from 'multer';
 import { appConfig } from '../config.js';
 import { storage } from '../storage/index.js';
 import { generateCode } from '../utils/code.js';
+import { requireServerAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 const normalizeFilename = (filename: string): string => {
@@ -17,7 +18,7 @@ const upload = multer({
 });
 
 // 单文件上传
-router.post('/', upload.single('file'), async (req, res) => {
+router.post('/', requireServerAuth, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -68,7 +69,7 @@ router.post('/', upload.single('file'), async (req, res) => {
 });
 
 // 批量上传
-router.post('/batch', upload.array('files', appConfig.maxBatchSize), async (req, res) => {
+router.post('/batch', requireServerAuth, upload.array('files', appConfig.maxBatchSize), async (req, res) => {
   try {
     const files = req.files as Express.Multer.File[];
     if (!files || files.length === 0) {

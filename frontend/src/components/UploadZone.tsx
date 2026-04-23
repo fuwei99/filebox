@@ -10,6 +10,7 @@ interface UploadZoneProps {
   onUpload: (files: File[], options: UploadOptions) => Promise<void>;
   uploading: boolean;
   progress: number;
+  maxFileSize?: number;
 }
 
 export interface UploadOptions {
@@ -32,7 +33,7 @@ const formatFileSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-export const UploadZone: React.FC<UploadZoneProps> = ({ onUpload, uploading, progress }) => {
+export const UploadZone: React.FC<UploadZoneProps> = ({ onUpload, uploading, progress, maxFileSize = 100 * 1024 * 1024 }) => {
   const [dragActive, setDragActive] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [options, setOptions] = useState<UploadOptions>({
@@ -111,7 +112,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onUpload, uploading, pro
         <p className="text-gray-600 mb-1">
           <span className="font-medium text-primary-600">点击上传</span> 或拖拽文件到此处
         </p>
-        <p className="text-sm text-gray-400">支持批量上传，单文件最大 100MB</p>
+        <p className="text-sm text-gray-400">支持批量上传，单文件最大 {formatFileSize(maxFileSize)}</p>
       </div>
 
       {files.length > 0 && (
