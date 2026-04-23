@@ -30,7 +30,7 @@ export interface StorageProvider {
   incrementDownload(code: string): Promise<void>;
   cleanupExpired(): Promise<void>;
   exportSnapshot(): StorageSnapshotRecord[];
-  importSnapshot(records: StorageSnapshotRecord[]): void;
+  importSnapshot(records: StorageSnapshotRecord[]): Promise<void>;
   /** 按前缀批量删除（用于聊天房间附件清理） */
   deleteByPrefix?(prefix: string): Promise<void>;
 }

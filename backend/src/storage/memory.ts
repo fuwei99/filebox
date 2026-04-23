@@ -23,7 +23,7 @@ export class MemoryStorage implements StorageProvider {
     }));
   }
 
-  importSnapshot(records: StorageSnapshotRecord[]): void {
+  async importSnapshot(records: StorageSnapshotRecord[]): Promise<void> {
     this.storage.clear();
     for (const record of records) {
       const code = this.normalizeCode(record.code);

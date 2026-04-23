@@ -130,7 +130,7 @@ export class GitSyncService {
       const snapshot = await this.readFullSnapshotFromDisk();
       
       if (snapshot.files.length > 0) {
-        this.memoryStorage.importSnapshot(snapshot.files);
+        await this.memoryStorage.importSnapshot(snapshot.files);
       }
       if (snapshot.users.length > 0) {
         this.userStorage.importSnapshot(snapshot.users);

@@ -214,22 +214,49 @@ export class R2Storage implements StorageProvider {
     }));
   }
 
-  importSnapshot(records: StorageSnapshotRecord[]): void {
+  async importSnapshot(records: StorageSnapshotRecord[]): Promise<void> {
     this.storage.clear();
     for (const record of records) {
       const code = this.normalizeCode(record.code);
-      if (!record.r2Key) {
-        console.warn(`[R2Storage] Skipping record ${code}: no r2Key in snapshot`);
-        continue;
+
+      if (record.r2Key) {
+        // 正常 R2 记录，直接恢复元数据
+        this.storage.set(code, {
+          r2Key: record.r2Key,
+          metadata: {
+            ...record.metadata,
+            uploadTime: new Date(record.metadata.uploadTime),
+            expireAt: record.metadata.expireAt ? new Date(record.metadata.expireAt) : null,
+          },
+        });
+      } else if (record.buffer && record.buffer.length > 0) {
+        // 旧 MemoryStorage 格式迁移：有 buffer 无 r2Key，上传到 R2
+        try {
+          const r2Key = this.buildKey(code, record.metadata.expireAt);
+          await this.client.send(
+            new PutObjectCommand({
+              Bucket: this.bucket,
+              Key: r2Key,
+              Body: record.buffer,
+              ContentType: record.metadata.mimeType || 'application/octet-stream',
+              ContentLength: record.buffer.length,
+            })
+          );
+          this.storage.set(code, {
+            r2Key,
+            metadata: {
+              ...record.metadata,
+              uploadTime: new Date(record.metadata.uploadTime),
+              expireAt: record.metadata.expireAt ? new Date(record.metadata.expireAt) : null,
+            },
+          });
+          console.log(`[R2Storage] Migrated record ${code} from memory to R2 (${r2Key})`);
+        } catch (error) {
+          console.warn(`[R2Storage] Failed to migrate record ${code} to R2:`, error);
+        }
+      } else {
+        console.warn(`[R2Storage] Skipping record ${code}: no r2Key and no buffer in snapshot`);
       }
-      this.storage.set(code, {
-        r2Key: record.r2Key,
-        metadata: {
-          ...record.metadata,
-          uploadTime: new Date(record.metadata.uploadTime),
-          expireAt: record.metadata.expireAt ? new Date(record.metadata.expireAt) : null,
-        },
-      });
     }
   }
 
