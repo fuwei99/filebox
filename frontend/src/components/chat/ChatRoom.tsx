@@ -235,7 +235,25 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ room, onBack, socketRef, onR
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+    if (date >= todayStart) {
+      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    if (date >= yesterdayStart && date < todayStart) {
+      const time = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      return `昨天 ${time}`;
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const formatFileSize = (size?: number) => {
@@ -314,18 +332,14 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ room, onBack, socketRef, onR
                 <div className={`flex gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
                   {/* Avatar + Nickname */}
                   <div className="w-14 flex-shrink-0 flex flex-col items-center">
-                    {showAvatar ? (
-                      <>
-                        <span className="text-[11px] text-gray-500 mb-1 max-w-[56px] truncate">
-                          {message.sender.nickname}
-                        </span>
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-sm">
-                          {message.sender.avatarEmoji || '👤'}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="h-8" />
+                    {showAvatar && (
+                      <span className="text-[11px] text-gray-500 mb-1 max-w-[56px] truncate">
+                        {message.sender.nickname}
+                      </span>
                     )}
+                    <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-sm">
+                      {message.sender.avatarEmoji || '👤'}
+                    </div>
                   </div>
 
                   {/* Message content */}
