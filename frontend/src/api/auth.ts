@@ -33,6 +33,11 @@ export interface RegisterData {
   avatarEmoji?: string;
 }
 
+export interface GuestLoginData {
+  nickname: string;
+  avatarEmoji?: string;
+}
+
 export const register = async (data: RegisterData) => {
   const response = await api.post('/auth/register', data);
   return response.data;
@@ -40,6 +45,11 @@ export const register = async (data: RegisterData) => {
 
 export const login = async (data: LoginData) => {
   const response = await api.post('/auth/login', data);
+  return response.data;
+};
+
+export const guestLogin = async (data: GuestLoginData) => {
+  const response = await api.post('/auth/guest-login', data);
   return response.data;
 };
 

@@ -45,6 +45,23 @@ router.post('/rooms', async (req: AuthRequest, res) => {
   }
 });
 
+// Helper to get user display info (supports both regular and guest users)
+const getUserDisplayInfo = async (userId: string, reqUser: AuthRequest['user']) => {
+  if (reqUser?.isGuest) {
+    return {
+      nickname: reqUser.nickname || 'Guest',
+      avatarCode: null,
+      avatarEmoji: reqUser.avatarEmoji || '👤',
+    };
+  }
+  const user = await userStorage.findById(userId);
+  return {
+    nickname: user?.nickname || 'Unknown',
+    avatarCode: user?.avatarCode || null,
+    avatarEmoji: user?.avatarEmoji || '👤',
+  };
+};
+
 // Get my rooms
 router.get('/rooms', async (req: AuthRequest, res) => {
   try {
@@ -100,6 +117,17 @@ router.get('/rooms/:code', async (req: AuthRequest, res) => {
     const members = await chatStorage.getRoomMembers(room.id);
     const membersWithInfo = await Promise.all(
       members.map(async (member) => {
+        // For the requesting user, use info from token (supports guests)
+        if (member.userId === req.user!.id) {
+          return {
+            userId: member.userId,
+            nickname: req.user!.nickname || req.user!.username,
+            avatarCode: null,
+            avatarEmoji: req.user!.avatarEmoji || '👤',
+            isOnline: member.isOnline,
+            joinedAt: member.joinedAt,
+          };
+        }
         const user = await userStorage.findById(member.userId);
         return {
           userId: member.userId,
@@ -212,6 +240,23 @@ router.get('/rooms/:code/messages', async (req: AuthRequest, res) => {
 
     const messagesWithSender = await Promise.all(
       messages.map(async (msg) => {
+        // For the requesting user, use info from token (supports guests)
+        if (msg.senderId === req.user!.id) {
+          return {
+            id: msg.id,
+            type: msg.type,
+            content: msg.content,
+            fileName: msg.fileName,
+            fileSize: msg.fileSize,
+            timestamp: msg.timestamp,
+            sender: {
+              id: msg.senderId,
+              nickname: req.user!.nickname || req.user!.username,
+              avatarCode: null,
+              avatarEmoji: req.user!.avatarEmoji || '👤',
+            },
+          };
+        }
         const sender = await userStorage.findById(msg.senderId);
         return {
           id: msg.id,
@@ -273,7 +318,23 @@ router.post('/rooms/:code/messages', async (req: AuthRequest, res) => {
       fileSize
     );
 
-    const sender = await userStorage.findById(userId);
+    // For guest users, use token info directly
+    const senderInfo = req.user!.isGuest
+      ? {
+          id: userId,
+          nickname: req.user!.nickname || req.user!.username,
+          avatarCode: null,
+          avatarEmoji: req.user!.avatarEmoji || '👤',
+        }
+      : await (async () => {
+          const sender = await userStorage.findById(userId);
+          return {
+            id: userId,
+            nickname: sender?.nickname || 'Unknown',
+            avatarCode: sender?.avatarCode,
+            avatarEmoji: sender?.avatarEmoji,
+          };
+        })();
 
     res.json({
       success: true,
@@ -284,12 +345,7 @@ router.post('/rooms/:code/messages', async (req: AuthRequest, res) => {
         fileName: message.fileName,
         fileSize: message.fileSize,
         timestamp: message.timestamp,
-        sender: {
-          id: userId,
-          nickname: sender?.nickname || 'Unknown',
-          avatarCode: sender?.avatarCode,
-          avatarEmoji: sender?.avatarEmoji,
-        },
+        sender: senderInfo,
       },
     });
   } catch (error) {

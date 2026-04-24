@@ -127,7 +127,7 @@ export const ChatTab: React.FC = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-140px)] min-h-[680px] flex flex-col">
+    <div className="h-[calc(100vh-140px)] min-h-[400px] sm:min-h-[680px] flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -136,31 +136,31 @@ export const ChatTab: React.FC = () => {
               {user?.avatarEmoji || '👤'}
             </span>
           </div>
-          <div>
-            <h3 className="font-medium">{user?.nickname || user?.username}</h3>
-            <p className="text-sm text-gray-500">在线</p>
+          <div className="min-w-0">
+            <h3 className="font-medium truncate">{user?.nickname || user?.username}</h3>
+            <p className="text-sm text-gray-500">{user?.isGuest ? '游客模式' : '在线'}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setIsJoinModalOpen(true)}
-            className="btn-secondary text-sm"
+            className="btn-secondary text-sm whitespace-nowrap"
           >
-            加入房间
+            加入
           </button>
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="btn-primary text-sm"
+            className="btn-primary text-sm whitespace-nowrap"
           >
-            创建房间
+            创建
           </button>
         </div>
       </div>
 
       {/* Main content */}
       <div className="flex-1 flex gap-4 min-h-0">
-        {/* Room list sidebar */}
-        <div className="w-80 flex-shrink-0 card overflow-hidden flex flex-col">
+        {/* Room list sidebar - hidden on mobile when a room is selected */}
+        <div className={`${selectedRoom ? 'hidden sm:flex' : 'flex'} w-full sm:w-80 flex-shrink-0 card overflow-hidden flex-col`}>
           <div className="p-3 border-b border-gray-100">
             <h4 className="font-medium text-sm">聊天房间</h4>
           </div>
@@ -173,8 +173,8 @@ export const ChatTab: React.FC = () => {
           />
         </div>
 
-        {/* Chat area */}
-        <div className="flex-1 card overflow-hidden">
+        {/* Chat area - hidden on mobile when no room selected */}
+        <div className={`${!selectedRoom ? 'hidden sm:block' : 'block'} flex-1 card overflow-hidden`}>
           {selectedRoom ? (
             <ChatRoom
               room={selectedRoom}

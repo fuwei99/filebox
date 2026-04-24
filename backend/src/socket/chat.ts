@@ -8,6 +8,8 @@ interface AuthenticatedSocket extends Socket {
   userId?: string;
   username?: string;
   nickname?: string;
+  avatarEmoji?: string;
+  isGuest?: boolean;
 }
 
 export const registerChatSocket = (
@@ -24,9 +26,18 @@ export const registerChatSocket = (
     }
 
     try {
-      const decoded = jwt.verify(token, appConfig.jwtSecret) as { id: string; username: string };
+      const decoded = jwt.verify(token, appConfig.jwtSecret) as { 
+        id: string; 
+        username: string;
+        isGuest?: boolean;
+        nickname?: string;
+        avatarEmoji?: string;
+      };
       socket.userId = decoded.id;
       socket.username = decoded.username;
+      socket.isGuest = decoded.isGuest;
+      socket.nickname = decoded.nickname;
+      socket.avatarEmoji = decoded.avatarEmoji;
       next();
     } catch {
       next(new Error('Invalid token'));
@@ -36,8 +47,19 @@ export const registerChatSocket = (
   io.on('connection', (socket: AuthenticatedSocket) => {
     console.log(`[socket] User connected: ${socket.username} (${socket.id})`);
 
-    // Get user info
+    // Get user info (supports both regular users and guests)
     const getUserInfo = async () => {
+      // For guest users, use info stored in socket from token
+      if (socket.isGuest) {
+        return {
+          id: socket.userId!,
+          username: socket.username!,
+          nickname: socket.nickname || socket.username!,
+          avatarCode: null,
+          avatarEmoji: socket.avatarEmoji || '👤',
+        };
+      }
+      // For regular users, fetch from storage
       const user = await userStorage.findById(socket.userId!);
       return {
         id: socket.userId!,

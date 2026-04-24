@@ -6,6 +6,9 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     username: string;
+    isGuest?: boolean;
+    nickname?: string;
+    avatarEmoji?: string;
   };
 }
 
@@ -20,7 +23,13 @@ export const requireAuth = (req: AuthRequest, res: Response, next: NextFunction)
   const token = authHeader.substring(7);
 
   try {
-    const decoded = jwt.verify(token, appConfig.jwtSecret) as { id: string; username: string };
+    const decoded = jwt.verify(token, appConfig.jwtSecret) as { 
+      id: string; 
+      username: string;
+      isGuest?: boolean;
+      nickname?: string;
+      avatarEmoji?: string;
+    };
     req.user = decoded;
     next();
   } catch {

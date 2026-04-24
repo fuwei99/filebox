@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import { ArrowLeft, Send, Paperclip, File, Users, Settings, Copy, Archive, Trash2, RotateCcw, X } from 'lucide-react';
+import { ArrowLeft, Send, Paperclip, File, Users, Settings, Copy, Check, Archive, Trash2, RotateCcw, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
 import * as chatApi from '../../api/chat';
@@ -25,9 +25,30 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ room, onBack, socketRef, onR
   const [isOperating, setIsOperating] = useState(false);
   const [actionError, setActionError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [roomDetail, setRoomDetail] = useState<RoomDetail | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle copy message content
+  const handleCopyMessage = async (message: Message) => {
+    let textToCopy = '';
+    if (message.type === 'text') {
+      textToCopy = message.content;
+    } else if (message.type === 'file') {
+      textToCopy = `${message.fileName || '文件'}: ${window.location.origin}/api/download/${message.content}`;
+    } else if (message.type === 'image') {
+      textToCopy = `${window.location.origin}/i/${message.content}`;
+    }
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopiedMessageId(message.id);
+      setTimeout(() => setCopiedMessageId(null), 1500);
+    } catch {
+      // Copy failed, ignore
+    }
+  };
 
   // Initialize socket connection
   useEffect(() => {
@@ -337,7 +358,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ room, onBack, socketRef, onR
                   </div>
 
                   {/* Message content */}
-                  <div className={`max-w-[70%] ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
+                  <div className={`max-w-[75%] sm:max-w-[70%] ${isMe ? 'items-end' : 'items-start'} flex flex-col group`}>
                     <div
                       className={`relative px-3 py-2 rounded-lg ${
                         isMe
@@ -350,7 +371,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ room, onBack, socketRef, onR
                           isMe ? 'right-[-4px] bg-primary-500' : 'left-[-4px] bg-gray-100'
                         }`}
                       />
-                      {message.type === 'text' && <p className="text-sm break-all whitespace-pre-wrap relative z-10">{message.content}</p>}
+                      {message.type === 'text' && <p className="text-sm break-all whitespace-pre-wrap relative z-10 pr-6">{message.content}</p>}
                       {message.type === 'image' && (
                         <img
                           src={`/i/${message.content}`}
@@ -364,7 +385,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ room, onBack, socketRef, onR
                           href={`/api/download/${message.content}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`relative z-10 min-w-[220px] max-w-[320px] rounded-md px-3 py-2 flex items-center gap-3 transition-opacity hover:opacity-90 ${
+                          className={`relative z-10 min-w-[180px] sm:min-w-[220px] max-w-[260px] sm:max-w-[320px] rounded-md px-3 py-2 flex items-center gap-3 transition-opacity hover:opacity-90 ${
                             isMe ? 'bg-white/15 text-white' : 'bg-white text-gray-800 border border-gray-200'
                           }`}
                         >
@@ -380,6 +401,22 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ room, onBack, socketRef, onR
                         </a>
                       )}
                     </div>
+                    {/* Copy button */}
+                    <button
+                      onClick={() => handleCopyMessage(message)}
+                      className={`mt-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+                        copiedMessageId === message.id
+                          ? 'text-green-600'
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                      title="复制"
+                    >
+                      {copiedMessageId === message.id ? (
+                        <Check className="w-3.5 h-3.5" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>

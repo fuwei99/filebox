@@ -196,6 +196,53 @@ router.get('/server-status', (req, res) => {
   res.json({ enabled: appConfig.serverAuth.enabled });
 });
 
+// Guest login - no registration required, just pick emoji and nickname
+router.post('/guest-login', async (req, res) => {
+  try {
+    const { nickname, avatarEmoji } = req.body;
+
+    if (!nickname || nickname.trim().length === 0) {
+      return res.status(400).json({ error: 'Nickname is required' });
+    }
+
+    if (nickname.trim().length > 20) {
+      return res.status(400).json({ error: 'Nickname must be at most 20 characters' });
+    }
+
+    // Generate a unique guest ID based on timestamp and random
+    const guestId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const guestUsername = `guest_${Date.now()}`;
+
+    const token = jwt.sign(
+      { 
+        id: guestId, 
+        username: guestUsername,
+        isGuest: true,
+        nickname: nickname.trim(),
+        avatarEmoji: avatarEmoji || '👤'
+      },
+      appConfig.jwtSecret,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: guestId,
+        username: guestUsername,
+        nickname: nickname.trim(),
+        avatarCode: null,
+        avatarEmoji: avatarEmoji || '👤',
+        isGuest: true,
+      },
+    });
+  } catch (error) {
+    console.error('Guest login error:', error);
+    res.status(500).json({ error: 'Guest login failed' });
+  }
+});
+
 // Server login
 router.post('/server-login', (req, res) => {
   const { password } = req.body;

@@ -7,6 +7,7 @@ export interface User {
   nickname: string;
   avatarCode: string | null;
   avatarEmoji: string | null;
+  isGuest?: boolean;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (data: authApi.RegisterData) => Promise<void>;
+  guestLogin: (data: authApi.GuestLoginData) => Promise<void>;
   logout: () => void;
   updateUser: (user: User) => void;
   getToken: () => string | null;
@@ -88,6 +90,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const guestLogin = async (data: authApi.GuestLoginData) => {
+    const response = await authApi.guestLogin(data);
+    if (response.success) {
+      localStorage.setItem('filebox_token', response.token);
+      setToken(response.token);
+      setUser(response.user);
+    } else {
+      throw new Error(response.error || 'Guest login failed');
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('filebox_token');
     setToken(null);
@@ -107,6 +120,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isAuthenticated: !!user,
         login,
         register,
+        guestLogin,
         logout,
         updateUser,
         getToken,
